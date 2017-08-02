@@ -129,7 +129,7 @@ bool checkEntry(Bitcoin* btcLong, Bitcoin* btcShort, Result& res, Parameters& pa
   res.exchNameShort = btcShort->getExchName();
   res.priceLongIn = priceLong;
   res.priceShortIn = priceShort;
-  res.exitTarget = res.spreadIn - params.spreadTarget - res.feesLong);
+  res.exitTarget = res.spreadIn - params.spreadTarget - res.feesLong;
   res.trailingWaitCount[longId][shortId] = 0;
   return true;
 }
