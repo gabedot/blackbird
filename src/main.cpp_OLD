@@ -53,12 +53,27 @@ struct Balance {
 // 'main' function.
 // Blackbird doesn't require any arguments for now.
 int main(int argc, char** argv) {
-  std::cout << "GABEDOT Bitcoin Arbitrage" << std::endl;
+  std::cout << "Blackbird Bitcoin Arbitrage" << std::endl;
   std::cout << "DISCLAIMER: USE THE SOFTWARE AT YOUR OWN RISK\n" << std::endl;
   // Replaces the C++ global locale with the user-preferred locale
   std::locale mylocale("");
   // Loads all the parameters
-  Parameters params("gabedot.conf");
+  Parameters params("blackbird.conf");
+  // Does some verifications about the parameters
+  if (!params.demoMode) {
+    if (!params.useFullExposure) {
+      if (params.testedExposure < 10.0 && params.leg2.compare("USD") == 0) {
+        // TODO do the same check for other currencies. Is there a limi?
+        std::cout << "ERROR: Minimum USD needed: $10.00" << std::endl;
+        std::cout << "       Otherwise some exchanges will reject the orders\n" << std::endl;
+        exit(EXIT_FAILURE);
+      }
+      if (params.testedExposure > params.maxExposure) {
+        std::cout << "ERROR: Test exposure (" << params.testedExposure << ") is above max exposure (" << params.maxExposure << ")\n" << std::endl;
+        exit(EXIT_FAILURE);
+      }
+    }
+  }
 
 // Connects to the SQLite3 database.
 // This database is used to collect bid and ask information
@@ -66,6 +81,18 @@ int main(int argc, char** argv) {
 // would be useful to collect historical bid/ask data.
   if (createDbConnection(params) != 0) {
     std::cerr << "ERROR: cannot connect to the database \'" << params.dbFile << "\'\n" << std::endl;
+    exit(EXIT_FAILURE);
+  }
+
+  // We only trade BTC/USD and ETH/BTC for the moment
+  if (params.tradedPair().compare("BTC/USD") != 0 && params.tradedPair().compare("ETH/BTC") != 0) {
+    std::cout << "ERROR: Pair '" << params.tradedPair() <<"' is unknown. Valid pairs for now are BTC/USD and ETH/BTC\n" << std::endl;
+    exit(EXIT_FAILURE);
+  }
+
+  // ETH/BTC is not fully implemented yet, but the spreads are shown in Demo mode
+  if (params.tradedPair().compare("ETH/BTC") == 0 && params.demoMode == false) {
+    std::cout << "ERROR: ETH/BTC is only available in Demo mode\n" << std::endl;
     exit(EXIT_FAILURE);
   }
 
@@ -243,7 +270,7 @@ int main(int argc, char** argv) {
   }
   // Creates the CSV file that will collect the trade results
   std::string currDateTime = printDateTimeFileName();
-  std::string csvFileName = currDateTime + "_result.csv";
+  std::string csvFileName = "output/blackbird_result_" + currDateTime + ".csv";
   std::ofstream csvFile(csvFileName, std::ofstream::trunc);
   csvFile << "TRADE_ID,EXCHANGE_LONG,EXHANGE_SHORT,ENTRY_TIME,EXIT_TIME,DURATION,"
           << "TOTAL_EXPOSURE,BALANCE_BEFORE,BALANCE_AFTER,RETURN"
@@ -257,9 +284,9 @@ int main(int argc, char** argv) {
   params.logFile = &logFile;
   // Log file header
   logFile << "--------------------------------------------" << std::endl;
-  logFile << "|     GABEDOT Bitcoin Arbitrage Log File   |" << std::endl;
+  logFile << "|   Blackbird Bitcoin Arbitrage Log File   |" << std::endl;
   logFile << "--------------------------------------------\n" << std::endl;
-  logFile << "BOT started on " << printDateTime() << "\n" << std::endl;
+  logFile << "Blackbird started on " << printDateTime() << "\n" << std::endl;
 
   logFile << "Connected to database \'" << params.dbFile << "\'\n" << std::endl;
 
@@ -521,15 +548,8 @@ int main(int argc, char** argv) {
               res.trailing[res.idExchLong][res.idExchShort] = 1.0;
 
               // Send the orders to the two exchanges
-              if ( volumeLong != volumeShort ) {
-                if (volumeLong > volumeShort) {
-                  volumeLong = volumeShort;
-                } else {
-                  volumeShort = volumeLong
-                }
-              }
               auto longOrderId = sendLongOrder[res.idExchLong](params, "buy", volumeLong, limPriceLong);
-              auto shortOrderId = sendShortOrder[res.idExchShort](params, "sell", volumeLong, limPriceShort);
+              auto shortOrderId = sendShortOrder[res.idExchShort](params, "sell", volumeShort, limPriceShort);
               logFile << "Waiting for the two orders to be filled..." << std::endl;
               sleep_for(millisecs(5000));
               bool isLongOrderComplete = isOrderComplete[res.idExchLong](params, longOrderId);
@@ -561,8 +581,7 @@ int main(int argc, char** argv) {
           }
         }
         if (inMarket) {
-          logFile << "if everything is good we are already out of the market" << std::endl;
-          inMarket = false;
+          break;
         }
       }
       if (params.verbose) {
@@ -674,7 +693,7 @@ int main(int argc, char** argv) {
       if (params.verbose) logFile << '\n';
     }
     // Moves to the next iteration, unless
-    // the maximum is reached.
+    // the maxmum is reached.
     timeinfo.tm_sec += params.interval;
     currIteration++;
     if (currIteration >= params.debugMaxIteration) {

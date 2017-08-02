@@ -74,7 +74,7 @@ bool checkEntry(Bitcoin* btcLong, Bitcoin* btcShort, Result& res, Parameters& pa
     }
     // If one of the exchanges (or both) hasn't been implemented,
     // we mention in the log file that this spread is for info only.
-    if ((!btcLong->getIsImplemented() || !btcShort->getIsImplemented()) && !params.demoMode)
+    if ((!btcLong->getIsImplemented() && !params.demoMode)
       *params.logFile << "   info only";
 
     *params.logFile << std::endl;
@@ -83,7 +83,7 @@ bool checkEntry(Bitcoin* btcLong, Bitcoin* btcShort, Result& res, Parameters& pa
   // otherwise we return False regardless of
   // the opportunity found.
   if (!btcLong->getIsImplemented() ||
-      !btcShort->getIsImplemented() ||
+ 
       res.spreadIn == 0.0)
     return false;
 
@@ -129,7 +129,7 @@ bool checkEntry(Bitcoin* btcLong, Bitcoin* btcShort, Result& res, Parameters& pa
   res.exchNameShort = btcShort->getExchName();
   res.priceLongIn = priceLong;
   res.priceShortIn = priceShort;
-  res.exitTarget = res.spreadIn - params.spreadTarget - 2.0*(res.feesLong + res.feesShort);
+  res.exitTarget = res.spreadIn - params.spreadTarget - res.feesLong);
   res.trailingWaitCount[longId][shortId] = 0;
   return true;
 }
