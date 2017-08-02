@@ -525,7 +525,7 @@ int main(int argc, char** argv) {
                 if (volumeLong > volumeShort) {
                   volumeLong = volumeShort;
                 } else {
-                  volumeShort = volumeLong
+                  volumeShort = volumeLong;
                 }
               }
               auto longOrderId = sendLongOrder[res.idExchLong](params, "buy", volumeLong, limPriceLong);
