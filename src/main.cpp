@@ -555,7 +555,7 @@ int main(int argc, char** argv) {
                 }
                 // Both orders are now fully executed
                 logFile << "Done" << std::endl;
-              }
+              
               // Stores the partial result to file in case
               // the program exits before closing the position.
               res.savePartialResult("restore.txt");
@@ -564,6 +564,7 @@ int main(int argc, char** argv) {
               longOrderId  = "0";
               shortOrderId = "0";
               break;
+              }
             }
           }
         }
