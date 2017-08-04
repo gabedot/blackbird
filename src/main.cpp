@@ -302,7 +302,7 @@ int main(int argc, char** argv) {
   // Gets the the balances from every exchange
   // This is only done when not in Demo mode.
   std::vector<Balance> balance(numExch);
-  if (!params.demoMode)
+  //if (!params.demoMode)
     std::transform(getAvail, getAvail + numExch,
                    begin(balance),
                    [&params]( decltype(*getAvail) apply )
@@ -491,6 +491,11 @@ int main(int argc, char** argv) {
               double volumeShort = res.exposure / btcVec[res.idExchShort].getBid();
               double limPriceLong = getLimitPrice[res.idExchLong](params, volumeLong, false);
               double limPriceShort = getLimitPrice[res.idExchShort](params, volumeShort, true);
+              logFile << "         Long limit price:  " << limPriceLong << std::endl;
+              logFile << "         Short limit price: " << limPriceShort << std::endl;
+              logFile << "         Long volume:  " << volumeLong << std::endl;
+              logFile << "         Short volume: " << volumeShort << std::endl;
+                  
               if (limPriceLong == 0.0 || limPriceShort == 0.0) {
                 logFile << "WARNING: Opportunity found but error with the order books (limit price is null). Trade canceled\n";
                 logFile.precision(2);
@@ -528,27 +533,29 @@ int main(int argc, char** argv) {
                   volumeShort = volumeLong;
                 }
               }
-              auto longOrderId = sendLongOrder[res.idExchLong](params, "buy", volumeLong, limPriceLong);
-              auto shortOrderId = sendShortOrder[res.idExchShort](params, "sell", volumeLong, limPriceShort);
-              logFile << "Waiting for the two orders to be filled..." << std::endl;
-              sleep_for(millisecs(5000));
-              bool isLongOrderComplete = isOrderComplete[res.idExchLong](params, longOrderId);
-              bool isShortOrderComplete = isOrderComplete[res.idExchShort](params, shortOrderId);
-              // Loops until both orders are completed
-              while (!isLongOrderComplete || !isShortOrderComplete) {
-                sleep_for(millisecs(3000));
-                if (!isLongOrderComplete) {
-                  logFile << "Long order on " << params.exchName[res.idExchLong] << " still open..." << std::endl;
-                  isLongOrderComplete = isOrderComplete[res.idExchLong](params, longOrderId);
+              logFile << "         Volume after correction:  " << volumeLong << std::endl;
+              if (params.demoMode) {
+                auto longOrderId = sendLongOrder[res.idExchLong](params, "buy", volumeLong, limPriceLong);
+                auto shortOrderId = sendShortOrder[res.idExchShort](params, "sell", volumeLong, limPriceShort);
+                logFile << "Waiting for the two orders to be filled..." << std::endl;
+                sleep_for(millisecs(5000));
+                bool isLongOrderComplete = isOrderComplete[res.idExchLong](params, longOrderId);
+                bool isShortOrderComplete = isOrderComplete[res.idExchShort](params, shortOrderId);
+                // Loops until both orders are completed
+                while (!isLongOrderComplete || !isShortOrderComplete) {
+                  sleep_for(millisecs(3000));
+                  if (!isLongOrderComplete) {
+                    logFile << "Long order on " << params.exchName[res.idExchLong] << " still open..." << std::endl;
+                    isLongOrderComplete = isOrderComplete[res.idExchLong](params, longOrderId);
+                  }
+                  if (!isShortOrderComplete) {
+                    logFile << "Short order on " << params.exchName[res.idExchShort] << " still open..." << std::endl;
+                    isShortOrderComplete = isOrderComplete[res.idExchShort](params, shortOrderId);
+                  }
                 }
-                if (!isShortOrderComplete) {
-                  logFile << "Short order on " << params.exchName[res.idExchShort] << " still open..." << std::endl;
-                  isShortOrderComplete = isOrderComplete[res.idExchShort](params, shortOrderId);
-                }
+                // Both orders are now fully executed
+                logFile << "Done" << std::endl;
               }
-              // Both orders are now fully executed
-              logFile << "Done" << std::endl;
-
               // Stores the partial result to file in case
               // the program exits before closing the position.
               res.savePartialResult("restore.txt");
